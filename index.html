@@ -364,6 +364,44 @@ function doLogin() {
   }
 }
 
+
+// ═══════════════════
+//  INIT & NAV
+// ═══════════════════
+function initApp() {
+  setHeaderDate();
+  loadTab('hari_ini');
+}
+
+function setHeaderDate() {
+  const HARI  = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+  const BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const d = new Date();
+  document.getElementById('header-date').textContent =
+    `${HARI[d.getDay()]}, ${d.getDate()} ${BULAN[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function showTab(tab, btn) {
+  activeTab = tab;
+  detailCtx = null;
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  loadTab(tab);
+}
+
+function loadTab(tab, force) {
+  if (!force && dataCache[tab]) { renderTab(tab, dataCache[tab]); return; }
+  showLoading();
+  fetchApi(tab).then(data => { dataCache[tab] = data; renderTab(tab, data); }).catch(showError);
+}
+
+function renderTab(tab, data) {
+  if (tab === 'hari_ini')  renderHariIni(data);
+  if (tab === 'tren')      renderTren(data);
+  if (tab === 'history')   renderHistory(data);
+  if (tab === 'statistik') renderStatistik(data);
+}
+
 // ═══════════════════
 //  API FETCH — JSONP (tidak butuh CORS, bekerja dari Vercel)
 // ═══════════════════
@@ -691,7 +729,21 @@ function renderDetail(detail, nama, tgl) {
         <div style="font-family:Arial,sans-serif;font-size:13px;color:var(--teks-sub);margin-top:3px;font-weight:600">${tglPanjang(tgl)}</div>
       </div>
     </div>
-    <div class="detail-grid">${items||'<div class="detail-item full"><div class="detail-val det
+    <div class="detail-grid">${items||'<div class="detail-item full"><div class="detail-val detail-empty">Tidak ada data yang dapat ditampilkan.</div></div>'}</div>\`);
+}
+
+function backFromDetail() {
+  if (!detailCtx) { showTab('hari_ini', document.querySelector('.nav-tab')); return; }
+  const { fromTab } = detailCtx;
+  detailCtx = null;
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  const map = { hari_ini:0, tren:1, history:2, statistik:3 };
+  const btns = document.querySelectorAll('.nav-tab');
+  if (btns[map[fromTab]]) btns[map[fromTab]].classList.add('active');
+  activeTab = fromTab;
+  if (dataCache[fromTab]) renderTab(fromTab, dataCache[fromTab]);
+  else loadTab(fromTab);
+}
 
 if (sessionStorage.getItem('logbook_auth') === '1') {
   document.getElementById('login-screen').style.display = 'none';
