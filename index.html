@@ -843,12 +843,29 @@ function loadTab(tab, force) {
 }
 
 // ═══════════════════
-//  API FETCH
+//  API FETCH — JSONP (tidak butuh CORS, bekerja dari Vercel)
 // ═══════════════════
 function fetchApi(action, extra) {
-  let url = `${API_URL}?mode=api&action=${action}`;
-  if (extra) Object.entries(extra).forEach(([k,v]) => url += `&${k}=${encodeURIComponent(v)}`);
-  return fetch(url).then(r => r.json());
+  return new Promise(function(resolve, reject) {
+    const cbName = 'cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    let url = `${API_URL}?mode=api&action=${action}&callback=${cbName}`;
+    if (extra) Object.entries(extra).forEach(([k,v]) => url += `&${k}=${encodeURIComponent(v)}`);
+
+    window[cbName] = function(data) {
+      delete window[cbName];
+      script.remove();
+      resolve(data);
+    };
+
+    const script = document.createElement('script');
+    script.src = url;
+    script.onerror = function() {
+      delete window[cbName];
+      script.remove();
+      reject(new Error('Gagal terhubung. Pastikan Apps Script sudah di-deploy ulang dengan patch doGet.'));
+    };
+    document.head.appendChild(script);
+  });
 }
 
 // ═══════════════════
